@@ -591,7 +591,7 @@ def icon(name, color="slate", size=18):
 # ==================================================
 # CONFIG
 # ==================================================
-EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"
+EXCEL_FILE = "Steelworks_Fleet_Compliance_Dashboard.xlsm"
 COMPLIANCE_SHEETS_ATTEMPT = {
     "SWPE": ["SWPE", "swpe", "Swpe", "SWPE ", " SWPE"],
     "SWIN": ["SWIN", "swin", "Swin", "SWIN ", " SWIN"],
@@ -1092,21 +1092,20 @@ if len(df_filtered) == 0:
 VEH_COL  = df_filtered.columns[0]
 NAME_COL = df_filtered.columns[1]
 
-display_cols = [VEH_COL, NAME_COL, cfg["expiry"], "_DaysLeft"]
-available    = [c for c in display_cols if c in df_filtered.columns]
+display_df = pd.DataFrame({
+    "Vehicle No": df_filtered[VEH_COL],
+    "Vehicle Name": df_filtered[NAME_COL],
+    "Expiry Date": (
+        df_filtered[cfg["expiry"]]
+        if cfg["expiry"] in df_filtered.columns
+        else pd.NaT
+    ),
+    "Days Left": pd.to_numeric(
+        df_filtered["_DaysLeft"], errors="coerce"
+    ),
+})
 
-display_df = df_filtered[available].copy()
-display_df.columns = ["Vehicle No", "Vehicle Name", "Expiry Date", "Days Left"][:len(available)]
-display_df["Days Left"] = pd.to_numeric(display_df["Days Left"], errors="coerce")
 display_df["Status"] = display_df["Days Left"].apply(status_icon)
-
-header_cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
-header_cols[0].markdown("**Vehicle No**")
-header_cols[1].markdown("**Vehicle Name**")
-header_cols[2].markdown("**Expiry Date**")
-header_cols[3].markdown("**Days Left**")
-header_cols[4].markdown("**Status**")
-header_cols[5].markdown("**Action**")
 
 st.markdown("<hr style='margin:4px 0; border-color:#e2e8f0;'>", unsafe_allow_html=True)
 
