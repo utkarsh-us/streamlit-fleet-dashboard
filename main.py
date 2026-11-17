@@ -264,12 +264,9 @@ section[data-testid="stSidebar"] hr {
 /* ============ SIDEBAR LOGO — BOTTOM SMALL ============ */
 .sidebar-bottom-logo {
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 10px;
-    text-align: center;
-    padding: 22px 0 12px 0;
+    padding: 28px 0 12px 0;
     margin-top: 24px;
     border-top: 1px solid #e2e8f0;
 }
@@ -284,19 +281,6 @@ section[data-testid="stSidebar"] hr {
 .sidebar-bottom-logo img:hover {
     opacity: 1;
     transform: scale(1.05);
-}
-
-.developer-credit {
-    font-size: 10px;
-    line-height: 1.6;
-    letter-spacing: 0.2px;
-    color: #64748b;
-    text-align: center;
-}
-.developer-credit strong {
-    font-size: 11px;
-    font-weight: 700;
-    color: #173b70;
 }
 
 /* ============ KPI CARDS ============ */
@@ -962,10 +946,6 @@ with st.sidebar:
             <div class="sidebar-bottom-logo">
                 <img src="data:{LOGO_MIME};base64,{LOGO_B64}"
                    alt="Steelworks Logo">
-                <div class="developer-credit">
-                    Developed & Maintained by<br>
-                    <strong>Utkarsh Kashyap</strong>
-                </div>
             </div>
         """, unsafe_allow_html=True)
 
