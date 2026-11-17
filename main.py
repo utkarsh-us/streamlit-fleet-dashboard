@@ -558,6 +558,17 @@ button[kind="primary"],
 }
 .skeleton-card { height: 100px; margin-bottom: 16px; }
 .skeleton-row { height: 40px; margin-bottom: 8px; }
+
+/* ============ STICKY TABLE HEADER ============ */
+.sticky-header-container {
+    position: sticky;
+    top: 0px; /* Adjust this if you have a fixed top bar */
+    z-index: 999;
+    background: #f8fafc; /* Match your app's background color to hide scrolling elements */
+    padding-top: 10px;
+    padding-bottom: 5px;
+    margin-top: -10px; 
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1083,10 +1094,6 @@ st.divider()
 # ==================================================
 # MAIN TABLE
 # ==================================================
-st.markdown(
-    f'<div style="display:flex;align-items:center;gap:10px;font-size:20px;font-weight:800;color:#0f172a;margin:8px 0 16px 0;">{icon("file", "blue", 22)}<span>{doc_type} Records</span></div>',
-    unsafe_allow_html=True,
-)
 
 if len(df_filtered) == 0:
     st.warning("⚠️ No vehicles match the current search or filters.")
@@ -1110,8 +1117,25 @@ display_df = pd.DataFrame({
 
 display_df["Status"] = display_df["Days Left"].apply(status_icon)
 
-st.markdown("<hr style='margin:4px 0; border-color:#e2e8f0;'>", unsafe_allow_html=True)
+# --- STICKY HEADER (Title + Columns) ---
+sticky_html = f"""
+<div class="sticky-header-container">
+    <div style="display:flex;align-items:center;gap:10px;font-size:20px;font-weight:800;color:#0f172a;margin:8px 0 16px 0;">
+        {icon("file", "blue", 22)}<span>{doc_type} Records</span>
+    </div>
+    <div style="display: flex; width: 100%; padding-bottom: 8px; border-bottom: 2px solid #cbd5e1;">
+        <div style="flex: 2.2; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Vehicle No</div>
+        <div style="flex: 3.5; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Vehicle Name</div>
+        <div style="flex: 2.2; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Expiry Date</div>
+        <div style="flex: 1.5; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Days Left</div>
+        <div style="flex: 1.8; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Status</div>
+        <div style="flex: 1.2; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Action</div>
+    </div>
+</div>
+"""
+st.markdown(sticky_html, unsafe_allow_html=True)
 
+# --- YOUR EXISTING LOOP ---
 for i, row in display_df.iterrows():
     cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
     cols[0].write(row["Vehicle No"])
