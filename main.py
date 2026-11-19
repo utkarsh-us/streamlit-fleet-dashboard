@@ -1447,13 +1447,27 @@ if total_v > 0 and active_v == total_v:
 
 
 # ==================================================
-# ADMIN QUERY VIEWER
+# ADMIN QUERY VIEWER (PASSWORD PROTECTED)
 # ==================================================
+# Only show the expander if there are queries
 if st.session_state.user_queries:
     with st.expander("🔒 Admin View: Submitted Queries", expanded=False):
-        st.caption(f"Logged in as Admin: {ADMIN_EMAIL}")
-        for q in reversed(st.session_state.user_queries):
-            st.info(f"**{q['time']}** | {q['name']} ({q['email']}) | **{q['issue_type']}** | Vehicle: {q['vehicle_no']}\n\n*{q['description']}*")
+        # Simple password check
+        admin_password = st.text_input("Enter Admin Password", type="password", key="admin_pw")
+        
+        if admin_password == "admin123": # <--- CHANGE THIS PASSWORD
+            st.success("✅ Access Granted")
+            st.caption(f"Logged in as Admin: {ADMIN_EMAIL}")
+            
+            for q in reversed(st.session_state.user_queries):
+                st.info(f"**{q['time']}** | {q['name']} ({q['email']}) | **{q['issue_type']}** | Vehicle: {q['vehicle_no']}\n\n*{q['description']}*")
+                
+            # Optional: Add a button to clear queries
+            if st.button("🗑️ Clear All Queries", key="clear_queries"):
+                st.session_state.user_queries = []
+                st.rerun()
+        elif admin_password:
+            st.error("❌ Incorrect Password")
 
 
 # ==================================================
