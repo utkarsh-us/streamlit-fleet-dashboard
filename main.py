@@ -57,6 +57,11 @@ else:
     LOGO_MIME = "image/png"
 
 # ==================================================
+# CONFIG
+# ==================================================
+ADMIN_EMAIL = "utkarsh.kashyap@steelworks.in"
+
+# ==================================================
 # CSS
 # ==================================================
 st.markdown("""
@@ -281,6 +286,74 @@ section[data-testid="stSidebar"] hr {
 .sidebar-bottom-logo img:hover {
     opacity: 1;
     transform: scale(1.05);
+}
+
+/* ============ HIDE SPECIFIC TRIGGER BUTTON ============ */
+div[class*="st-key-hidden_contact_btn"] {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ============ FLOATING CONTACT LOGO BUTTON ============ */
+.floating-contact-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 99999;
+    width: 70px;
+    height: 70px;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(15,23,42,0.15), 0 8px 24px rgba(15,23,42,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 10px;
+    border: 2px solid transparent;
+}
+
+.floating-contact-btn:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 8px 24px rgba(15,23,42,0.2), 0 12px 32px rgba(14,165,233,0.3);
+    border-color: #0ea5e9;
+}
+
+.floating-contact-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.floating-contact-btn:hover img {
+    opacity: 1;
+}
+
+/* Tooltip on hover */
+.floating-contact-btn::before {
+    content: 'Contact Admin';
+    position: absolute;
+    right: 85px;
+    background: #0f172a;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.floating-contact-btn:hover::before {
+    opacity: 1;
 }
 
 /* ============ KPI CARDS ============ */
@@ -628,6 +701,68 @@ if "search_query" not in st.session_state:
     st.session_state.search_query = ""
 if "selected_month" not in st.session_state:
     st.session_state.selected_month = None
+
+# Session state for queries
+if "user_queries" not in st.session_state:
+    st.session_state.user_queries = []
+
+
+# ==================================================
+# DIALOG FUNCTIONS
+# ==================================================
+@st.dialog("📬 Contact Admin / Report Issue", width="large")
+def show_query_dialog():
+    st.markdown(f"""
+    <div style="background: #f8fafc; padding: 16px; border-radius: 12px; border-left: 4px solid #0ea5e9; margin-bottom: 20px;">
+        <div style="font-size: 14px; color: #334155; font-weight: 500;">
+            Found incorrect data or need help? Please submit your query below and it will be sent directly to <strong>Utkarsh Kashyap ({ADMIN_EMAIL})</strong>.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.form("query_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            name = st.text_input("Your Name", placeholder="e.g. John Doe")
+        with col2:
+            email = st.text_input("Your Email", placeholder="e.g. john@steelworks.in")
+            
+        col3, col4 = st.columns(2)
+        with col3:
+            issue_type = st.selectbox("Issue Type", [
+                "Incorrect Expiry Date", 
+                "Missing Document Link", 
+                "Vehicle Details Wrong", 
+                "System Error",
+                "Other"
+            ])
+        with col4:
+            vehicle_no = st.text_input("Vehicle Number (Optional)", placeholder="e.g. CG04NZ9517")
+            
+        description = st.text_area("Describe the Issue in Detail", placeholder="Please explain what is incorrect or missing...", height=100)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        submitted = st.form_submit_button("📨 Submit Query", use_container_width=True, type="primary")
+        
+        if submitted:
+            if not name or not description:
+                st.error("⚠️ Please provide your Name and a Description of the issue.")
+            else:
+                # Save to session state
+                st.session_state.user_queries.append({
+                    "time": pd.Timestamp.now().strftime("%d-%b-%Y %I:%M %p"),
+                    "name": name,
+                    "email": email,
+                    "issue_type": issue_type,
+                    "vehicle_no": vehicle_no,
+                    "description": description
+                })
+                
+                # Show Success
+                st.success("✅ Query submitted successfully! The admin has been notified.")
+                st.balloons()
+                time.sleep(2.5)
+                st.rerun()
 
 
 # ==================================================
@@ -1312,10 +1447,58 @@ if total_v > 0 and active_v == total_v:
 
 
 # ==================================================
+# ADMIN QUERY VIEWER
+# ==================================================
+if st.session_state.user_queries:
+    with st.expander("🔒 Admin View: Submitted Queries", expanded=False):
+        st.caption(f"Logged in as Admin: {ADMIN_EMAIL}")
+        for q in reversed(st.session_state.user_queries):
+            st.info(f"**{q['time']}** | {q['name']} ({q['email']}) | **{q['issue_type']}** | Vehicle: {q['vehicle_no']}\n\n*{q['description']}*")
+
+
+# ==================================================
 # FOOTER
 # ==================================================
 st.markdown(f"""
-<div style="text-align:center; color:#94a3b8; font-size:12px; padding:20px 0 8px 0; margin-top:20px; border-top:1px solid #f1f5f9;">
+<div style="text-align:center; color:#94a3b8; font-size:12px; padding:20px 0 24px 0; margin-top:10px; border-top:1px solid #e2e8f0;">
     {icon("shield", "slate", 12)} &nbsp;© {pd.Timestamp.now().year} Steelworks • Fleet Compliance System
 </div>
 """, unsafe_allow_html=True)
+
+
+# ==================================================
+# FLOATING BOTTOM RIGHT CONTACT LOGO
+# ==================================================
+if LOGO_B64:
+    # 1. Render the floating HTML logo
+    st.markdown(f"""
+        <div class="floating-contact-btn" id="contact-fab">
+            <img src="data:{LOGO_MIME};base64,{LOGO_B64}" alt="Contact Admin Logo">
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # 2. JavaScript to bridge the HTML click to Streamlit
+    components.html("""
+    <script>
+        // Wait for the parent document to load
+        setTimeout(function() {
+            const fab = window.parent.document.getElementById('contact-fab');
+            if (fab) {
+                fab.addEventListener('click', function() {
+                    // Find the hidden Streamlit button and click it
+                    const buttons = window.parent.document.querySelectorAll('button');
+                    for (let btn of buttons) {
+                        if (btn.innerText.includes('TriggerQuery')) {
+                            btn.click();
+                            break;
+                        }
+                    }
+                });
+            }
+        }, 500);
+    </script>
+    """, height=0)
+
+    # 3. The hidden Streamlit button that actually triggers the dialog
+    if st.button("TriggerQuery", key="hidden_contact_btn"):
+        show_query_dialog()
