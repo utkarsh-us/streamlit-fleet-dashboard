@@ -102,11 +102,6 @@ html, body, [class*="css"] {
     0%   { transform: translateY(0) scale(1); opacity: 0.5; }
     100% { transform: translateY(-100vh) scale(1.2); opacity: 0; }
 }
-@keyframes logoEntry {
-    0%   { opacity: 0; transform: scale(0.7) rotate(-8deg); }
-    60%  { opacity: 1; transform: scale(1.08) rotate(3deg); }
-    100% { opacity: 1; transform: scale(1) rotate(0); }
-}
 @keyframes ripple {
     to { transform: scale(4); opacity: 0; }
 }
@@ -268,7 +263,7 @@ section[data-testid="stSidebar"] hr {
     border-color: #e2e8f0 !important; margin: 22px 0 !important;
 }
 
-/* ============ SIDEBAR LOGO — BOTTOM SMALL ============ */
+/* ============ SIDEBAR LOGO ============ */
 .sidebar-bottom-logo {
     display: flex;
     justify-content: center;
@@ -336,7 +331,6 @@ div[class*="st-key-hidden_contact_btn"] {
     opacity: 1;
 }
 
-/* Tooltip on hover */
 .floating-contact-btn::before {
     content: 'Contact Admin';
     position: absolute;
@@ -385,10 +379,6 @@ div[class*="st-key-hidden_contact_btn"] {
     box-shadow: 0 4px 8px rgba(15,23,42,0.06), 0 20px 40px -12px rgba(14,165,233,0.25);
     border-color: #bae6fd;
 }
-[data-testid="stMetric"]:nth-of-type(1) { animation-delay: 0.05s; }
-[data-testid="stMetric"]:nth-of-type(2) { animation-delay: 0.10s; }
-[data-testid="stMetric"]:nth-of-type(3) { animation-delay: 0.15s; }
-[data-testid="stMetric"]:nth-of-type(4) { animation-delay: 0.20s; }
 [data-testid="stMetricLabel"] {
     font-size: 12px !important;
     font-weight: 700 !important;
@@ -631,12 +621,8 @@ button[kind="primary"],
     animation: shimmer 1.6s linear infinite;
     border-radius: 12px;
 }
-.skeleton-card { height: 100px; margin-bottom: 16px; }
-.skeleton-row { height: 40px; margin-bottom: 8px; }
 </style>
 """, unsafe_allow_html=True)
-
-
 
 
 # ==================================================
@@ -704,8 +690,6 @@ if "search_query" not in st.session_state:
 if "selected_month" not in st.session_state:
     st.session_state.selected_month = None
 
-# Note: We no longer need "user_queries" in session state since we are saving to CSV
-
 
 # ==================================================
 # DIALOG FUNCTIONS
@@ -754,7 +738,6 @@ def show_query_dialog():
                     
                     with open(QUERY_FILE, mode='a', newline='', encoding='utf-8') as f:
                         writer = csv.writer(f)
-                        # Write header if file is new
                         if not file_exists:
                             writer.writerow(["Time", "Name", "Email", "Issue Type", "Vehicle No", "Description"])
                         
@@ -763,19 +746,18 @@ def show_query_dialog():
                             name, email, issue_type, vehicle_no, description
                         ])
                     
-                    # Show Success
                     st.success("✅ Query submitted successfully! The admin has been notified.")
                     st.balloons()
-                    time.sleep(2.5)
+                    # REMOVED time.sleep(2.5) to make it instant
                     st.rerun()
                 except Exception as e:
                     st.error(f"❌ Failed to save query. Error: {str(e)}")
 
 
 # ==================================================
-# LOAD HELPERS
+# LOAD HELPERS (INCREASED TTL to 3600 for speed)
 # ==================================================
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=3600)
 def get_actual_sheets():
     if not os.path.exists(FILE_PATH):
         return []
@@ -797,7 +779,7 @@ def get_last_updated():
     return datetime.datetime.fromtimestamp(mtime)
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=3600)
 def load_sheet(sheet_name):
     if not os.path.exists(FILE_PATH):
         return None
@@ -815,7 +797,7 @@ def load_sheet(sheet_name):
     return None
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=3600)
 def load_hyperlinks(sheet_name):
     if not os.path.exists(FILE_PATH):
         return {}
@@ -947,8 +929,9 @@ def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAY
     return [summary[k] for k in sorted(summary.keys())]
 
 
+@st.cache_data(ttl=3600)
 def render_count_up_metric(label, value):
-    metric_id = f"metric_{abs(hash(label))}"
+    metric_id = f"metric_{abs(hash(label))}_{value}"
     components.html(f"""
     <div style="
         background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
@@ -1012,14 +995,9 @@ with st.sidebar:
         st.error(f"❌ Sheet '{entity}' not found in file.")
         st.stop()
 
-    with st.spinner("Loading data..."):
-        progress = st.progress(0)
-        for pct in [25, 50, 75, 100]:
-            progress.progress(pct)
-            time.sleep(0.05)
-        df_all     = load_sheet(real_sheet)
-        hyperlinks = load_hyperlinks(real_sheet)
-        progress.empty()
+    # REMOVED artificial time.sleep here for speed
+    df_all     = load_sheet(real_sheet)
+    hyperlinks = load_hyperlinks(real_sheet)
 
     if df_all is None:
         st.error("❌ Could not load data.")
@@ -1082,7 +1060,6 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
-    # ---- LOGO AT BOTTOM OF SIDEBAR ----
     if LOGO_B64:
         st.markdown(f"""
             <div class="sidebar-bottom-logo">
@@ -1252,7 +1229,6 @@ display_df = pd.DataFrame({
 
 display_df["Status"] = display_df["Days Left"].apply(status_icon)
 
-# --- NEW HEADER ROW ADDED HERE ---
 header_cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
 headers = ["Vehicle No", "Vehicle Name", "Expiry Date", "Days Left", "Status", "Action"]
 
@@ -1264,7 +1240,6 @@ for col, header in zip(header_cols, headers):
 
 st.markdown("<hr style='margin:4px 0; border-color:#cbd5e1;'>", unsafe_allow_html=True)
 
-# --- YOUR EXISTING LOOP ---
 for i, row in display_df.iterrows():
     cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
     cols[0].write(row["Vehicle No"])
@@ -1295,7 +1270,7 @@ for i, row in display_df.iterrows():
 
 
 # ==================================================
-# VEHICLE DETAILS DIALOG
+# VEHICLE DETAILS DIALOG (OPTIMIZED)
 # ==================================================
 if st.session_state.dialog_open and st.session_state.dialog_vehicle is not None:
     veh_no_clicked = str(st.session_state.dialog_vehicle).strip().upper()
@@ -1311,21 +1286,10 @@ if st.session_state.dialog_open and st.session_state.dialog_vehicle is not None:
 
     vehicle = match_rows.iloc[0]
 
-    excel_row = None
+    # OPTIMIZATION: Calculate row directly instead of re-reading the whole Excel file
     try:
-        with open(FILE_PATH, "rb") as f:
-            _data = f.read()
-        _wb = openpyxl.load_workbook(io.BytesIO(_data), data_only=True)
-        _ws = _wb[real_sheet]
-        for r in range(2, _ws.max_row + 1):
-            cell_val = _ws.cell(row=r, column=1).value
-            if cell_val and str(cell_val).strip().upper() == veh_no_clicked:
-                excel_row = r
-                break
+        excel_row = match_rows.index[0] + 2
     except Exception:
-        pass
-
-    if excel_row is None:
         excel_row = 2
 
     @st.dialog(f"🚛  {vehicle.get(NAME_COL, '')}  •  {vehicle[VEH_COL]}", width="large")
@@ -1465,13 +1429,11 @@ with st.expander("🔒 Admin View: Submitted Queries", expanded=False):
     if admin_password == "admin123": # <--- CHANGE THIS PASSWORD
         st.success("✅ Access Granted")
         
-        # Check if the file exists
         if os.path.exists(QUERY_FILE):
             df_queries = pd.read_csv(QUERY_FILE)
             if not df_queries.empty:
                 st.dataframe(df_queries, use_container_width=True, hide_index=True)
                 
-                # Optional: Download button
                 csv_data = df_queries.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="📥 Download Queries as CSV",
@@ -1502,22 +1464,18 @@ st.markdown(f"""
 # FLOATING BOTTOM RIGHT CONTACT LOGO
 # ==================================================
 if LOGO_B64:
-    # 1. Render the floating HTML logo
     st.markdown(f"""
         <div class="floating-contact-btn" id="contact-fab">
             <img src="data:{LOGO_MIME};base64,{LOGO_B64}" alt="Contact Admin Logo">
         </div>
     """, unsafe_allow_html=True)
     
-    # 2. JavaScript to bridge the HTML click to Streamlit
     components.html("""
     <script>
-        // Wait for the parent document to load
         setTimeout(function() {
             const fab = window.parent.document.getElementById('contact-fab');
             if (fab) {
                 fab.addEventListener('click', function() {
-                    // Find the hidden Streamlit button and click it
                     const buttons = window.parent.document.querySelectorAll('button');
                     for (let btn of buttons) {
                         if (btn.innerText.includes('TriggerQuery')) {
@@ -1531,6 +1489,5 @@ if LOGO_B64:
     </script>
     """, height=0)
 
-    # 3. The hidden Streamlit button that actually triggers the dialog
     if st.button("TriggerQuery", key="hidden_contact_btn"):
         show_query_dialog()
