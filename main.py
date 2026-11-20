@@ -7,6 +7,7 @@ import time
 import datetime
 import warnings
 import base64
+import csv
 import streamlit.components.v1 as components
 from pathlib import Path
 import openpyxl
@@ -60,6 +61,7 @@ else:
 # CONFIG
 # ==================================================
 ADMIN_EMAIL = "utkarsh.kashyap@steelworks.in"
+QUERY_FILE = "queries.csv"
 
 # ==================================================
 # CSS
@@ -702,9 +704,7 @@ if "search_query" not in st.session_state:
 if "selected_month" not in st.session_state:
     st.session_state.selected_month = None
 
-# Session state for queries
-if "user_queries" not in st.session_state:
-    st.session_state.user_queries = []
+# Note: We no longer need "user_queries" in session state since we are saving to CSV
 
 
 # ==================================================
@@ -715,7 +715,7 @@ def show_query_dialog():
     st.markdown(f"""
     <div style="background: #f8fafc; padding: 16px; border-radius: 12px; border-left: 4px solid #0ea5e9; margin-bottom: 20px;">
         <div style="font-size: 14px; color: #334155; font-weight: 500;">
-            Found incorrect data or need help? Please submit your query below and it will be sent directly to <strong>Utkarsh Kashyap ({ADMIN_EMAIL})</strong>.
+            Found incorrect data or need help? Please submit your query below and it will be sent directly to <strong>admin ({ADMIN_EMAIL})</strong>.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -748,21 +748,28 @@ def show_query_dialog():
             if not name or not description:
                 st.error("⚠️ Please provide your Name and a Description of the issue.")
             else:
-                # Save to session state
-                st.session_state.user_queries.append({
-                    "time": pd.Timestamp.now().strftime("%d-%b-%Y %I:%M %p"),
-                    "name": name,
-                    "email": email,
-                    "issue_type": issue_type,
-                    "vehicle_no": vehicle_no,
-                    "description": description
-                })
-                
-                # Show Success
-                st.success("✅ Query submitted successfully! The admin has been notified.")
-                st.balloons()
-                time.sleep(2.5)
-                st.rerun()
+                try:
+                    # Save to CSV file
+                    file_exists = os.path.isfile(QUERY_FILE)
+                    
+                    with open(QUERY_FILE, mode='a', newline='', encoding='utf-8') as f:
+                        writer = csv.writer(f)
+                        # Write header if file is new
+                        if not file_exists:
+                            writer.writerow(["Time", "Name", "Email", "Issue Type", "Vehicle No", "Description"])
+                        
+                        writer.writerow([
+                            pd.Timestamp.now().strftime("%d-%b-%Y %I:%M %p"),
+                            name, email, issue_type, vehicle_no, description
+                        ])
+                    
+                    # Show Success
+                    st.success("✅ Query submitted successfully! The admin has been notified.")
+                    st.balloons()
+                    time.sleep(2.5)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Failed to save query. Error: {str(e)}")
 
 
 # ==================================================
@@ -1449,25 +1456,36 @@ if total_v > 0 and active_v == total_v:
 # ==================================================
 # ADMIN QUERY VIEWER (PASSWORD PROTECTED)
 # ==================================================
-# Only show the expander if there are queries
-if st.session_state.user_queries:
-    with st.expander("🔒 Admin View: Submitted Queries", expanded=False):
-        # Simple password check
-        admin_password = st.text_input("Enter Admin Password", type="password", key="admin_pw")
+st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+st.divider()
+
+with st.expander("🔒 Admin View: Submitted Queries", expanded=False):
+    admin_password = st.text_input("Enter Admin Password", type="password", key="admin_pw")
+    
+    if admin_password == "admin123": # <--- CHANGE THIS PASSWORD
+        st.success("✅ Access Granted")
         
-        if admin_password == "admin123": # <--- CHANGE THIS PASSWORD
-            st.success("✅ Access Granted")
-            st.caption(f"Logged in as Admin: {ADMIN_EMAIL}")
-            
-            for q in reversed(st.session_state.user_queries):
-                st.info(f"**{q['time']}** | {q['name']} ({q['email']}) | **{q['issue_type']}** | Vehicle: {q['vehicle_no']}\n\n*{q['description']}*")
+        # Check if the file exists
+        if os.path.exists(QUERY_FILE):
+            df_queries = pd.read_csv(QUERY_FILE)
+            if not df_queries.empty:
+                st.dataframe(df_queries, use_container_width=True, hide_index=True)
                 
-            # Optional: Add a button to clear queries
-            if st.button("🗑️ Clear All Queries", key="clear_queries"):
-                st.session_state.user_queries = []
-                st.rerun()
-        elif admin_password:
-            st.error("❌ Incorrect Password")
+                # Optional: Download button
+                csv_data = df_queries.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download Queries as CSV",
+                    data=csv_data,
+                    file_name='fleet_queries.csv',
+                    mime='text/csv',
+                )
+            else:
+                st.info("No queries have been submitted yet.")
+        else:
+            st.info("No queries have been submitted yet.")
+            
+    elif admin_password:
+        st.error("❌ Incorrect Password")
 
 
 # ==================================================
